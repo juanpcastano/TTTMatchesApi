@@ -5,9 +5,12 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"os"
 	"strconv"
+	"time"
 
 	"github.com/gorilla/mux"
+	"github.com/joho/godotenv"
 )
 
 const port string = ":8090"
@@ -18,6 +21,13 @@ func writeJSON(w http.ResponseWriter, status int, value any) error {
 	w.WriteHeader(status)
 	w.Header().Set("Content-Type", "application/json")
 	return json.NewEncoder(w).Encode(value)
+}
+
+func LoadDotEnv() {
+	err := godotenv.Load()
+	if err != nil {
+		fmt.Printf("error loading .env: %v\n", err)
+	}
 }
 
 type dbInfo struct {
@@ -115,23 +125,6 @@ func matchByID(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	rows, err := db.Query("SELECT movementnumber, iswinner, statecode FROM movements WHERE match_id = $1", id)
-	if err != nil {
-		fmt.Printf("Error fetching movements: %v\n", err)
-		writeJSON(w, 500, map[string]string{"error": err.Error()})
-		return
-	}
-	defer rows.Close()
-
-	for rows.Next() {
-		movementOBJ := &movement{}
-		if err := rows.Scan(&movementOBJ.MovementNumber, &movementOBJ.IsWinner, &movementOBJ.StateCode); err != nil {
-			fmt.Printf("Error scanning row: %v\n", err)
-			continue
-		}
-		match.Movements = append(match.Movements, *movementOBJ)
-	}
-
 	writeJSON(w, 200, match)
 }
 
@@ -165,11 +158,39 @@ func matchByMC(w http.ResponseWriter, req *http.Request) {
 
 }
 
+func rewriteDatabase(w http.ResponseWriter, req *http.Request) {
+	startTime := time.Now()
+
+	LoadDotEnv()
+	params := req.URL.Query()
+	if params.Get("password") != os.Getenv("API_PASSWORD") {
+		writeJSON(w, 401, map[string]string{"error": "not autorized"})
+		return
+	}
+
+	matchesCreated, err := RewriteDatabase()
+	if err != nil {
+		fmt.Printf("err: %v\n", err)
+		writeJSON(w, 500, map[string]string{"error": err.Error()})
+		return
+	}
+
+	duration := time.Since(startTime)
+
+	writeJSON(w, 200, map[string]interface{}{
+		"status":                 "succesfull",
+		"matches_created":        matchesCreated,
+		"execution_time":         duration.String(),
+		"execution_time_seconds": duration.Seconds(),
+	})
+}
+
 func main() {
 	server := mux.NewRouter()
 	server.HandleFunc("/info", info).Methods("GET")
 	server.HandleFunc("/matchByID/{id}", matchByID).Methods("GET")
 	server.HandleFunc("/matchByMC/{MovementsCode}", matchByMC).Methods("GET")
+	server.HandleFunc("/rewriteDatabase", rewriteDatabase).Methods("GET")
 	fmt.Println("Serving On Port", port[1:])
 	err := http.ListenAndServe(port, server)
 	if err != nil {

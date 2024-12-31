@@ -5,15 +5,12 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/joho/godotenv"
 	_ "github.com/lib/pq"
 )
 
 func ConectToDB() (*sql.DB, error) {
-	err := godotenv.Load()
-	if err != nil {
-		return &sql.DB{}, err
-	}
+
+	LoadDotEnv()
 
 	var (
 		host     = os.Getenv("POSTGRES_HOST")
