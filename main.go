@@ -2,7 +2,6 @@ package main
 
 import (
 	"database/sql"
-	"encoding/json"
 	"fmt"
 	"net/http"
 	"os"
@@ -16,12 +15,6 @@ import (
 const port string = ":8090"
 
 var endpointsArray []string = []string{"/info", "/matchByID/{id}", "/matchByMC/{MovementsCode}"}
-
-func writeJSON(w http.ResponseWriter, status int, value any) error {
-	w.WriteHeader(status)
-	w.Header().Set("Content-Type", "application/json")
-	return json.NewEncoder(w).Encode(value)
-}
 
 func LoadDotEnv() {
 	err := godotenv.Load()
@@ -38,14 +31,14 @@ type dbInfo struct {
 	Endpoints       []string `json:"endpoints"`
 }
 
-type match struct {
+type Match struct {
 	Id            int        `json:"id"`
 	MovementsCode int        `json:"movements_code"`
 	Winner        string     `json:"winner"`
-	Movements     []movement `json:"movements"`
+	Movements     []Movement `json:"movements"`
 }
 
-type movement struct {
+type Movement struct {
 	MovementNumber int  `json:"movement_number"`
 	IsWinner       bool `json:"is_winner"`
 	StateCode      int  `json:"state_code"`
@@ -55,7 +48,7 @@ func info(w http.ResponseWriter, req *http.Request) {
 	db, err := ConectToDB()
 	if err != nil {
 		fmt.Printf("err: %v\n", err)
-		writeJSON(w, 500, map[string]string{"error": "could not connect to database"})
+		WriteJSON(w, 500, map[string]string{"error": "could not connect to database"})
 		return
 	}
 	defer db.Close()
@@ -67,32 +60,32 @@ func info(w http.ResponseWriter, req *http.Request) {
 	err = db.QueryRow("SELECT count(*) FROM matches;").Scan(&dbInfo.TotalMatches)
 	if err != nil {
 		fmt.Printf("err: %v\n", err)
-		writeJSON(w, 500, map[string]string{"error": "query failed"})
+		WriteJSON(w, 500, map[string]string{"error": "query failed"})
 		return
 	}
 
 	err = db.QueryRow("SELECT count(*) FROM matches WHERE winner = 'X';").Scan(&dbInfo.XWinningMatches)
 	if err != nil {
 		fmt.Printf("err: %v\n", err)
-		writeJSON(w, 500, map[string]string{"error": "query failed"})
+		WriteJSON(w, 500, map[string]string{"error": "query failed"})
 		return
 	}
 
 	err = db.QueryRow("SELECT count(*) FROM matches WHERE winner = 'O';").Scan(&dbInfo.OWinningMatches)
 	if err != nil {
 		fmt.Printf("err: %v\n", err)
-		writeJSON(w, 500, map[string]string{"error": "query failed"})
+		WriteJSON(w, 500, map[string]string{"error": "query failed"})
 		return
 	}
 
 	err = db.QueryRow("SELECT count(*) FROM matches WHERE winner = 'D';").Scan(&dbInfo.Draws)
 	if err != nil {
 		fmt.Printf("err: %v\n", err)
-		writeJSON(w, 500, map[string]string{"error": "query failed"})
+		WriteJSON(w, 500, map[string]string{"error": "query failed"})
 		return
 	}
 
-	writeJSON(w, 200, dbInfo)
+	WriteJSON(w, 200, dbInfo)
 }
 
 func matchByID(w http.ResponseWriter, req *http.Request) {
@@ -100,15 +93,15 @@ func matchByID(w http.ResponseWriter, req *http.Request) {
 	id := vars["id"]
 
 	if _, err := strconv.Atoi(id); err != nil {
-		writeJSON(w, 400, map[string]string{"error": "Invalid match ID"})
+		WriteJSON(w, 400, map[string]string{"error": "Invalid match ID"})
 		return
 	}
 
-	match := &match{}
+	match := &Match{}
 	db, err := ConectToDB()
 	if err != nil {
 		fmt.Printf("Error connecting to DB: %v\n", err)
-		writeJSON(w, 500, map[string]string{"error": "could not connect to database"})
+		WriteJSON(w, 500, map[string]string{"error": "could not connect to database"})
 		return
 	}
 	defer db.Close()
@@ -117,44 +110,46 @@ func matchByID(w http.ResponseWriter, req *http.Request) {
 	err = db.QueryRow(queryMatch, id).Scan(&match.Id, &match.MovementsCode, &match.Winner)
 	if err != nil {
 		if err == sql.ErrNoRows {
-			writeJSON(w, 404, map[string]string{"error": "Match not found"})
+			WriteJSON(w, 404, map[string]string{"error": "Match not found"})
 			return
 		}
 		fmt.Printf("Error fetching match: %v\n", err)
-		writeJSON(w, 500, map[string]string{"error": err.Error()})
+		WriteJSON(w, 500, map[string]string{"error": err.Error()})
 		return
 	}
+	match.Movements = MovementsCodeToMovementsArray(strconv.Itoa(match.MovementsCode))
 
-	writeJSON(w, 200, match)
+	WriteJSON(w, 200, match)
 }
 
 func matchByMC(w http.ResponseWriter, req *http.Request) {
 	vars := mux.Vars(req)
 	mc := vars["MovementsCode"]
 	if _, err := strconv.Atoi(mc); err != nil {
-		writeJSON(w, 400, map[string]string{"error": "Invalid match ID"})
+		WriteJSON(w, 400, map[string]string{"error": "Invalid match ID"})
 		return
 	}
-	var match match
+	var match Match
 	db, err := ConectToDB()
 	if err != nil {
 		fmt.Printf("err: %v\n", err)
-		writeJSON(w, 500, map[string]string{"error": "could not connect to database"})
+		WriteJSON(w, 500, map[string]string{"error": "could not connect to database"})
 		return
 	}
 	defer db.Close()
 	err = db.QueryRow("SELECT * FROM matches WHERE movementscode = $1", mc).Scan(&match.Id, &match.MovementsCode, &match.Winner)
 	if err != nil {
 		if err.Error() == "sql: no rows in result set" {
-			writeJSON(w, 200, map[string]string{"error": "Match not found"})
+			WriteJSON(w, 200, map[string]string{"error": "Match not found"})
 			return
 		}
 		fmt.Printf("err: %v\n", err)
-		writeJSON(w, 500, map[string]string{"error": err.Error()})
+		WriteJSON(w, 500, map[string]string{"error": err.Error()})
 		return
 	}
+	match.Movements = MovementsCodeToMovementsArray(strconv.Itoa(match.MovementsCode))
 
-	writeJSON(w, 200, match)
+	WriteJSON(w, 200, match)
 
 }
 
@@ -164,20 +159,20 @@ func rewriteDatabase(w http.ResponseWriter, req *http.Request) {
 	LoadDotEnv()
 	params := req.URL.Query()
 	if params.Get("password") != os.Getenv("API_PASSWORD") {
-		writeJSON(w, 401, map[string]string{"error": "not autorized"})
+		WriteJSON(w, 401, map[string]string{"error": "not autorized"})
 		return
 	}
 
 	matchesCreated, err := RewriteDatabase()
 	if err != nil {
 		fmt.Printf("err: %v\n", err)
-		writeJSON(w, 500, map[string]string{"error": err.Error()})
+		WriteJSON(w, 500, map[string]string{"error": err.Error()})
 		return
 	}
 
 	duration := time.Since(startTime)
 
-	writeJSON(w, 200, map[string]interface{}{
+	WriteJSON(w, 200, map[string]interface{}{
 		"status":                 "succesfull",
 		"matches_created":        matchesCreated,
 		"execution_time":         duration.String(),
