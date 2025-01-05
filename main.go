@@ -126,7 +126,7 @@ func matchByMC(w http.ResponseWriter, req *http.Request) {
 	vars := mux.Vars(req)
 	mc := vars["MovementsCode"]
 	if _, err := strconv.Atoi(mc); err != nil {
-		WriteJSON(w, 400, map[string]string{"error": "Invalid match ID"})
+		WriteJSON(w, 400, map[string]string{"error": "Invalid match MC"})
 		return
 	}
 	var match Match

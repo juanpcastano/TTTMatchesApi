@@ -22,7 +22,11 @@ func MovementsCodeToMovementsArray(mc string) []Movement {
 		if i%2 != 0 {
 			player = '2'
 		}
-		stateCode[i] = byte(player)
+		index, err := strconv.Atoi(string(mc[i]))
+		if err != nil {
+			fmt.Printf("err: %v\n", err)
+		}
+		stateCode[index-1] = byte(player)
 		stateCodeInt, err := strconv.Atoi(string(stateCode))
 		if err != nil {
 			fmt.Printf("err: %v\n", err)

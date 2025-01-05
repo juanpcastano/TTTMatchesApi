@@ -11,9 +11,9 @@ import (
 )
 
 var matchesCreated int = 0
-var mu sync.Mutex
 
 type matchData struct {
+	id            int
 	movementsCode int
 	winner        string
 }
@@ -90,24 +90,20 @@ func (wp *WorkerPool) insertMatches(batch []matchData) {
 	if len(batch) == 0 {
 		return
 	}
-	query := "INSERT INTO matches (movementscode, winner) VALUES "
+	query := "INSERT INTO matches (id, movementscode, winner) VALUES "
 	vals := []interface{}{}
 	for i, match := range batch {
 		if i > 0 {
 			query += ","
 		}
-		query += fmt.Sprintf("($%d, $%d)", i*2+1, i*2+2)
-		vals = append(vals, match.movementsCode, match.winner)
+		query += fmt.Sprintf("($%d, $%d, $%d)", i*3+1, i*3+2, i*3+3)
+		vals = append(vals, match.id, match.movementsCode, match.winner)
 	}
 	_, err := wp.db.Exec(query, vals...)
 	if err != nil {
 		log.Printf("Error insertando lote: %v", err)
 		return
 	}
-
-	mu.Lock()
-	matchesCreated += len(batch)
-	mu.Unlock()
 }
 
 func deleteDB() error {
@@ -185,7 +181,8 @@ func evaluateWinner(state []int) (bool, string) {
 
 func writeRemainings(remainings []int, turn string, state []int, movements []int, wp *WorkerPool) {
 	if len(movements) >= 9 {
-		wp.AddJob(matchData{ArrayToInt(movements), "D"})
+		matchesCreated++
+		wp.AddJob(matchData{matchesCreated, ArrayToInt(movements), "D"})
 		return
 	}
 	for _, v := range remainings {
@@ -197,7 +194,8 @@ func writeRemainings(remainings []int, turn string, state []int, movements []int
 		state[v-1] = turnToInt(turn)
 		isWinner, winner := evaluateWinner(state)
 		if isWinner {
-			wp.AddJob(matchData{ArrayToInt(movements), winner})
+			matchesCreated++
+			wp.AddJob(matchData{matchesCreated, ArrayToInt(movements), winner})
 			state[v-1] = 0
 			continue
 		}
