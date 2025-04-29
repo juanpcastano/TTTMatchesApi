@@ -14,20 +14,19 @@ func WriteJSON(w http.ResponseWriter, status int, value any) error {
 }
 
 func MovementsCodeToMovementsArray(mc string) []Movement {
-	stateCode := []byte("000000000")
+	stateCode := []byte("---------")
 	result := []Movement{}
 
-	for i := 0; i < len(mc); i++ {
-		player := '1'
+	for i := range len(mc) {
+		player := 'X'
 		if i%2 != 0 {
-			player = '2'
+			player = 'O'
 		}
 		index, err := strconv.Atoi(string(mc[i]))
 		if err != nil {
 			fmt.Printf("err: %v\n", err)
 		}
 		stateCode[index-1] = byte(player)
-		stateCodeInt, err := strconv.Atoi(string(stateCode))
 		if err != nil {
 			fmt.Printf("err: %v\n", err)
 		}
@@ -38,7 +37,7 @@ func MovementsCodeToMovementsArray(mc string) []Movement {
 		result = append(result, Movement{
 			MovementNumber: i + 1,
 			IsWinner:       isWinner,
-			StateCode:      stateCodeInt,
+			StateCode:      string(stateCode),
 		})
 	}
 	return result

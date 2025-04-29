@@ -37,9 +37,9 @@ type Match struct {
 }
 
 type Movement struct {
-	MovementNumber int  `json:"movement_number"`
-	IsWinner       bool `json:"is_winner"`
-	StateCode      int  `json:"state_code"`
+	MovementNumber int    `json:"movement_number"`
+	IsWinner       bool   `json:"is_winner"`
+	StateCode      string `json:"state_code"`
 }
 
 func info(w http.ResponseWriter, req *http.Request) {
