@@ -12,14 +12,12 @@ import (
 	"github.com/joho/godotenv"
 )
 
-const port string = ":8090"
-
 var endpointsArray []string = []string{"/info", "/matchByID/{id}", "/matchByMC/{MovementsCode}"}
 
 func LoadDotEnv() {
 	err := godotenv.Load()
 	if err != nil {
-		fmt.Printf("error loading .env: %v\n", err)
+		panic(fmt.Sprintf("error loading .env: %v\n", err))
 	}
 }
 
@@ -155,8 +153,6 @@ func matchByMC(w http.ResponseWriter, req *http.Request) {
 
 func rewriteDatabase(w http.ResponseWriter, req *http.Request) {
 	startTime := time.Now()
-
-	LoadDotEnv()
 	params := req.URL.Query()
 	if params.Get("password") != os.Getenv("API_PASSWORD") {
 		WriteJSON(w, 401, map[string]string{"error": "not autorized"})
@@ -181,6 +177,8 @@ func rewriteDatabase(w http.ResponseWriter, req *http.Request) {
 }
 
 func main() {
+	LoadDotEnv()
+	port := ":" + os.Getenv("PORT")
 	server := mux.NewRouter()
 	server.HandleFunc("/info", info).Methods("GET")
 	server.HandleFunc("/matchByID/{id}", matchByID).Methods("GET")
