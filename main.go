@@ -42,6 +42,10 @@ type Movement struct {
 	StateCode      string `json:"state_code"`
 }
 
+func status(w http.ResponseWriter, req *http.Request) {
+	WriteJSON(w, 200, map[string]string{"service": "API	Azure", "status": "Running", "timestamp": time.Now().String()})
+}
+
 func info(w http.ResponseWriter, req *http.Request) {
 	db, err := ConectToDB()
 	if err != nil {
@@ -184,6 +188,7 @@ func main() {
 	server.HandleFunc("/matchByID/{id}", matchByID).Methods("GET")
 	server.HandleFunc("/matchByMC/{MovementsCode}", matchByMC).Methods("GET")
 	server.HandleFunc("/rewriteDatabase", rewriteDatabase).Methods("GET")
+	server.HandleFunc("/status", status).Methods("GET")
 	fmt.Println("Serving On Port", port[1:])
 	err := http.ListenAndServe(port, server)
 	if err != nil {
