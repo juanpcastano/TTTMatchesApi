@@ -43,7 +43,7 @@ type Movement struct {
 }
 
 func status(w http.ResponseWriter, req *http.Request) {
-	WriteJSON(w, 200, map[string]string{"service": "API	Azure", "status": "Running", "timestamp": time.Now().String()})
+	WriteJSON(w, 200, map[string]string{"service": "API Azure", "status": "Running", "timestamp": time.Now().String()})
 }
 
 func info(w http.ResponseWriter, req *http.Request) {
